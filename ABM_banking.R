@@ -1,10 +1,7 @@
 library(tidyverse)
 library(gridExtra)
-set.seed(000)
+set.seed(111)
 
-1111
-20
-2
 ###############  variables ##########
 
 t <- 100 # how long will simulation take. 
@@ -13,7 +10,7 @@ n_households <- 10000 # number of household agents (gives deposits)
 n_borrowers <- 20000 # number of borrower agents (take loans)
 equity <- 80     # starting equity for each bank
 interest <- 0.0125 # interest 
-CAR <- 0.06 # capital adequacy ratio
+CAR <- 0.08 # capital adequacy ratio
 MRR <- 0.035 # minumal reserve ratio
 depo_margin <- 0.1 # margin for the deposits. (1 + depo_margin) X interest
 loan_margin <- 0.9  # calculated same as depo_margin
@@ -27,7 +24,7 @@ bankruptcy_fire_sell <- 0.5 # for how much will bank sell loans when go bankrupt
 income_tax <- 0.18 # tax
 risk_weight <- function(x){0.5 + 5*x} # how is risk weight of a loan calculated. x is PD
 target_reserves <- 2 # multiplier to MRR for optimal reserves held
-u_bound_CAR <- 2.5 # multiplier to CAR for optimal capital adequacy held
+u_bound_CAR <- 2 # multiplier to CAR for optimal capital adequacy held
 safety_effect <- 0.04
 concentration_spread <- function(x){0.15*x^2} # less competition - bigger spread. To give additional spread at the start add intercept to the function
 
@@ -39,13 +36,13 @@ p_change_CAR <- 40 # period of change
 CAR_delta <- 0.02
 
 # PD shock. (quite sharpe increase and steady decline)
-PD_shock_TF <- T
+PD_shock_TF <- F
 p_change_PD <- 30
 max_PD_delta <- 0.07
 PD_decrease_rate <- 0.05
 
 # MRR shock
-MRR_shock_TF <- F
+MRR_shock_TF <- T
 p_change_MRR <- 50
 MRR_delta <- 0.03
 
@@ -60,11 +57,6 @@ spread_shock_TF <- F
 p_change_spread <- 50
 l_margin_delta <- 0.02
 d_margin_delta <- -0.01
-
-# not used yet
-loan_amount <- 1
-loan_periods <- 4
-
 
 ############### agent matrices ############
 
@@ -129,7 +121,7 @@ for (q in 1: n_borrowers) {
 }
 
 banks$equity[1,] <- equity
-w <- 1
+
 for (w in 1:n_banks) {
   # sum deposits
   banks$sum_deposits[1,w] <- sum(households$depo_value[1,which(households$which_bank[1,] == w)])
@@ -186,9 +178,6 @@ if(interest_shock_TF == TRUE){
   interest[p_change_interest:t] <- interest[p_change_interest:t] + interest_delta 
 }
 ########## start of the simulation #########
-# making a 4 kinds of loans each by the quarter they are ending 
-loans_type <- data.frame(quarter = rep(c(1:loan_periods), t/4), t = 1:t)
-p <- 2
 
 # progress bar and timer
 progress.bar <- winProgressBar("Simulating banking sector", "0% Done", 0, 1, 0)
@@ -270,8 +259,8 @@ for (p in 2:t) {
   ########### calculating PnL and balance sheet ###############
   
   # changing spread (i.e. profitability of banks) given the consolidation/concentration of the market
-  #depo_margin[p] <- depo_margin[p] - concentration_spread((n_banks-sum(banks$bankruptcy[p]))/n_banks)
-  #loan_margin[p] <- loan_margin[p] + concentration_spread((n_banks-sum(banks$bankruptcy[p]))/n_banks)
+  # depo_margin[p] <- depo_margin[p] - concentration_spread((n_banks-sum(banks$bankruptcy[p]))/n_banks)
+  # loan_margin[p] <- loan_margin[p] + concentration_spread((n_banks-sum(banks$bankruptcy[p]))/n_banks)
   
   ## revenue of the bank
   # interest revenue
@@ -307,7 +296,7 @@ for (p in 2:t) {
   
   # dividends
   borrowers$risk_weight[p,] <-  risk_weight(borrowers$pd[p,])
-  g <- 1
+  
   for (g in which(banks$bankruptcy[p-1,] == 0)) {
     # a bank may give a dividend if the equity is exceed capital adequacy ratio by 1.5 its minimum
     banks$risk_weighted_assets[p,g] <- sum(borrowers$loan_value[p,which(borrowers$which_bank[p,] == g)] * borrowers$risk_weight[p,which(borrowers$which_bank[p,] == g)])
@@ -402,7 +391,6 @@ for (p in 2:t) {
 close(progress.bar)
 proc.time()-ptm
 
-
 ############ visualisation ############
 banks <- lapply(banks, as.data.frame)
 households <- lapply(households, as.data.frame)
@@ -425,9 +413,6 @@ which_shock <- which(c(PD_shock_TF,
                         interest_shock_TF,
                         spread_shock_TF,
                         CAR_shock_TF))
-
-shocks[which_shock,2]
-
 
 # total of given variable for the agent
 revenue  <- banks$revenue%>%
@@ -464,7 +449,7 @@ loans  <- banks$cost%>%
   geom_line()+
   labs(title = "loans")+
   geom_vline(xintercept = c(shocks[which_shock,2]), linetype=2, 
-             color = which_shock+5, size=1)
+             color = which_shock+9, size=1)
 
 equity  <- banks$equity%>%
   mutate(total = rowSums(.[,1:ncol(.)]))%>%
@@ -483,7 +468,7 @@ profitability  <- profitability%>%
   labs(title = "profitablity")+
   geom_smooth()+
   geom_vline(xintercept = c(shocks[which_shock,2]), linetype=2, 
-             color = which_shock+7, size=1)+
+             color = which_shock+9, size=1)+
   xlab(label = "t")
 
 divs  <- banks$dividends%>%
@@ -502,19 +487,6 @@ any(banks$bankruptcy == 1) # if false then no bankruptcy
 any(!(banks$liquidity_assistance == 0)) # if flase then no liquidity assistance
 any(banks$undercapitalized == 1) # if false then no undercapitalized
 
-
-banks <- lapply(banks, as.data.frame)
-households <- lapply(households, as.data.frame)
-borrowers <- lapply(borrowers, as.data.frame)
-
-
-banks_research2[[3]] <- banks
-households_research2[[3]] <- households
-borrowers_research2[[3]] <- borrowers
-
-banks_research <- list(c(),c(),c())
-households_research <- list(c(),c(),c())
-borrowers_research <- list(c(),c(),c())
 ########## other visualisations ###########
 # mean of given variable for the agent
 revenue_mean  <- banks$revenue%>%
@@ -622,8 +594,3 @@ banks$sum_deposits%>%
   ggplot(aes(x=ind, y=value,group = variable, fill=variable))+
   geom_area(position="fill")+
   scale_x_discrete()
-
-banks$bankruptcy%>%
-  tail(n = 100)
-
-banks$equity
