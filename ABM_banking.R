@@ -4,11 +4,12 @@ set.seed(111)
 
 ###############  variables ##########
 
-t <- 100 # how long will simulation take. 
+t <- 300 # how long will simulation take. 
 n_banks <- 10 # number of bank agents
-n_households <- 10000 # number of household agents (gives deposits)
-n_borrowers <- 20000 # number of borrower agents (take loans)
-equity <- 80     # starting equity for each bank
+n_households <- 1000 # number of household agents (gives deposits)
+n_borrowers <- 2000 # number of borrower agents (take loans)
+loan_periods <- 1
+equity <- 40     # starting equity for each bank
 interest <- 0.0125 # interest 
 CAR <- 0.08 # capital adequacy ratio
 MRR <- 0.035 # minumal reserve ratio
@@ -42,7 +43,7 @@ max_PD_delta <- 0.07
 PD_decrease_rate <- 0.05
 
 # MRR shock
-MRR_shock_TF <- T
+MRR_shock_TF <- F
 p_change_MRR <- 50
 MRR_delta <- 0.03
 
@@ -90,7 +91,7 @@ banks <- list(equity = matrix(NA, ncol = n_banks, nrow = t),
               bankruptcy = matrix(0,ncol = n_banks, nrow = t),
               undercapitalized = matrix(0,ncol = n_banks, nrow = t))
 
-# changing to a time series for incorporating endogenous shocks later on
+# changing to a time series for incorporating exogenous shocks later on
 CAR <- rep(CAR, t)
 MRR <- rep(MRR, t)
 interest <- rep(interest, t)
@@ -114,9 +115,9 @@ borrowers$which_bank[1,] <- sample(1:n_banks, size = n_borrowers, replace = TRUE
 borrowers$loan_end[1,] <- sample(1:loan_periods, size = n_borrowers, replace = TRUE)
 
 # calculating initial cost of capital
-for (q in 1: n_borrowers) {
+for (q in 1:n_borrowers) {
   
-  borrowers$cost_capital[1,q] <- (1 + ((loan_margin[p]+1)*interest[1]) - borrowers$pd[1,q] * borrowers$recovery_rate[1,q])/(1-borrowers$pd[1,q])
+  borrowers$cost_capital[1,q] <- (1 + ((loan_margin[1]+1)*interest[1]) - borrowers$pd[1,q] * borrowers$recovery_rate[1,q])/(1-borrowers$pd[1,q])
   
 }
 
